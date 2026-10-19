@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HomeBase</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e2a2f;
+    --bg-raise: #133439;
+    --bg-sunk: #0b2327;
+    --line: #264a50;
+    --paper: #eaf2ee;
+    --muted: #9fbab3;
+    --clash: #ff7a6b;
+    --focus: #f4d98a;
+    --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    --body: "Figtree", "Segoe UI", system-ui, sans-serif;
+    --lane-label: 88px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--paper);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.45;
+  }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+  .app {
+    display: grid;
+    grid-template-columns: minmax(340px, 400px) 1fr;
+    height: 100vh;
+    min-height: 640px;
+  }
+
+  /* ---------- voice panel ---------- */
+  .voice {
+    background: var(--bg-sunk);
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .brand { padding: 22px 24px 14px; }
+  .brand h2 {
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 26px;
+    letter-spacing: -0.01em;
+  }
+  .brand p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+
+  .log {
+    list-style: none;
+    margin: 0;
+    padding: 6px 24px 12px;
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    scroll-behavior: smooth;
+  }
+  .msg { max-width: 92%; }
+  .msg .bubble { margin: 0; padding: 11px 14px; border-radius: 16px; }
+  .msg.user { align-self: flex-end; }
+  .msg.user .bubble { background: #1d474d; border-bottom-right-radius: 4px; }
+  .msg.bot .bubble { background: var(--bg-raise); border-bottom-left-radius: 4px; }
+  .msg.warn .bubble { box-shadow: inset 3px 0 0 var(--clash); }
+  .msg.err .bubble { color: #ffc3bb; }
+  .msg .via { margin: 5px 4px 0; font-size: 13px; color: var(--muted); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 24px 12px; }
+  .chip {
+    border: 1px solid var(--line);
+    background: transparent;
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 14px;
+    color: var(--paper);
+  }
+  .chip:hover { background: var(--bg-raise); }
+
+  .composer {
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 14px 24px 22px;
+    border-top: 1px solid var(--line);
+  }
+  .orb {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    border: 0;
+    background: #3fb7c4;
+    color: #062226;
+    display: grid; place-items: center;
+    transition: background-color .2s, box-shadow .2s;
+  }
+  .orb svg { width: 26px; height: 26px; }
+  .orb[aria-pressed="true"] { background: var(--focus); box-shadow: 0 0 0 8px rgba(244,217,138,.22); }
+  .orb:disabled { background: var(--line); color: var(--muted); cursor: not-allowed; }
+  .composer input[type="text"] {
+    width: 100%;
+    background: var(--bg-raise);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 14px;
+  }
+  .composer input::placeholder { color: var(--muted); }
+  .send {
+    border: 0; border-radius: 14px; padding: 14px 16px;
+    background: var(--paper); color: #0b2327; font-weight: 600;
+  }
+  .send:disabled { opacity: .5; cursor: progress; }
+
+  /* ---------- board ---------- */
+  .board { padding: 22px 32px 28px; overflow-y: auto; min-width: 0; }
+  .top { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 10px 28px; }
+  .top h1 {
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(30px, 3.4vw, 46px);
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+  }
+  .people { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 0; padding: 0; list-style: none; flex-basis: 100%; order: 3; }
+  .people li { display: flex; align-items: center; gap: 7px; color: var(--muted); }
+  .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--c); flex: none; }
+  .tools { display: flex; gap: 10px; }
+  .ghost {
+    background: transparent; border: 1px solid var(--line); border-radius: 10px;
+    padding: 6px 12px; color: var(--muted); font-size: 14px;
+  }
+  .ghost:hover { color: var(--paper); border-color: var(--muted); }
+  .ghost[aria-pressed="true"] { color: var(--paper); background: var(--bg-raise); }
+
+  .alert {
+    margin: 16px 0 0;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(255,122,107,.12);
+    box-shadow: inset 3px 0 0 var(--clash);
+    color: #ffd2cc;
+  }
+  .alert[hidden] { display: none; }
+
+  /* timeline: the memorable element */
+  .river { margin-top: 22px; padding-bottom: 24px; }
+  .river-grid { position: relative; display: grid; grid-template-columns: var(--lane-label) 1fr; }
+  .axis { grid-column: 2; position: relative; height: 22px; color: var(--muted); font-size: 13px; }
+  .axis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .lane-label {
+    display: flex; align-items: center; gap: 8px;
+    padding-right: 10px;
+    border-top: 1px solid var(--line);
+    font-weight: 600;
+  }
+  .lane {
+    position: relative;
+    border-top: 1px solid var(--line);
+  }
+  .plot { position: absolute; top: 22px; bottom: 0; left: var(--lane-label); right: 0; pointer-events: none; }
+  .grid-line { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(159,186,179,.12); }
+  .now-line { position: absolute; top: -6px; bottom: 0; width: 2px; background: var(--focus); }
+  .now-line::after {
+    content: "Now"; position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%);
+    font-size: 12px; color: var(--focus); font-weight: 600;
+  }
+
+  .event {
+    position: absolute;
+    height: 34px;
+    padding: 2px 8px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--c) 24%, var(--bg));
+    box-shadow: inset 3px 0 0 var(--c);
+    overflow: hidden;
+    display: flex; flex-direction: column; justify-content: center;
+    font-size: 13px; line-height: 1.15;
+    white-space: nowrap;
+  }
+  .event .txt { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+  .event b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+  .event small { color: var(--muted); font-size: 12px; }
+  .event.narrow { overflow: visible; }
+  .event.narrow .txt { position: absolute; top: 0; bottom: 0; left: calc(100% + 8px); white-space: nowrap; }
+  .event.narrow.flip .txt { left: auto; right: calc(100% + 8px); text-align: right; }
+  .event.pickup { background: transparent; outline: 2px dashed var(--c); outline-offset: -2px; box-shadow: none; }
+  .event.fresh { animation: land 1.4s ease-out 1; }
+  @keyframes land {
+    0% { box-shadow: 0 0 0 0 var(--c), inset 3px 0 0 var(--c); transform: scaleY(.6); }
+    30% { box-shadow: 0 0 0 7px transparent, inset 3px 0 0 var(--c); transform: scaleY(1); }
+    100% { box-shadow: inset 3px 0 0 var(--c); }
+  }
+  .event.pickup.fresh { box-shadow: none; }
+  .clash {
+    position: absolute; top: 3px; bottom: 3px; border-radius: 6px;
+    background: repeating-linear-gradient(135deg, rgba(255,122,107,.30) 0 5px, rgba(255,122,107,.07) 5px 10px);
+    border: 1px solid var(--clash);
+    pointer-events: none;
+  }
+
+  /* lower sections: deliberately not matching cards */
+  .lower { display: grid; grid-template-columns: 1.5fr 1fr; gap: 40px; margin-top: 34px; }
+  .lower h3 {
+    margin: 0 0 12px;
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .load-row { display: grid; grid-template-columns: 70px 1fr 74px; align-items: center; gap: 12px; margin: 7px 0; }
+  .load-bar { height: 12px; border-radius: 6px; background: var(--bg-sunk); overflow: hidden; display: flex; }
+  .load-bar i { display: block; height: 100%; }
+  .load-open { background: var(--c); }
+  .load-done { background: color-mix(in srgb, var(--c) 40%, var(--bg-sunk)); }
+  .load-num { color: var(--muted); font-size: 14px; text-align: right; }
+  .legend { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+  .river .legend { margin-top: 30px; }
+  .chore-list { list-style: none; margin: 16px 0 0; padding: 0; }
+  .chore { display: grid; grid-template-columns: 1fr auto auto; gap: 14px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); }
+  .chore .meta { color: var(--muted); font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  .chore .late { color: var(--clash); font-weight: 600; }
+  .check {
+    border: 1px solid var(--muted); background: transparent; border-radius: 8px;
+    padding: 4px 11px; font-size: 14px;
+  }
+  .check:hover { background: var(--paper); color: #0b2327; border-color: var(--paper); }
+  .grocery { list-style: none; margin: 0; padding: 0; }
+  .grocery li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+  .grocery li span:first-child { flex: 1; }
+  .grocery .qty { color: var(--muted); font-size: 14px; }
+  .empty { color: var(--muted); margin: 0; }
+
+  @media (max-width: 980px) {
+    .app { grid-template-columns: 1fr; height: auto; }
+    .voice { border-right: 0; border-bottom: 1px solid var(--line); }
+    .log { max-height: 320px; }
+    .board { padding: 20px 16px 28px; }
+    .lower { grid-template-columns: 1fr; gap: 28px; }
+    :root { --lane-label: 64px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .event.fresh { animation: none; }
+    .log { scroll-behavior: auto; }
+    .orb { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="voice" aria-label="Talk to Alexa+">
+    <header class="brand">
+      <h2>HomeBase</h2>
+      <p>Alexa+ skill, simulated on a smart display</p>
+    </header>
+    <ol class="log" id="log" aria-live="polite"></ol>
+    <div class="chips" id="chips"></div>
+    <form class="composer" id="form" autocomplete="off">
+      <button type="button" class="orb" id="mic" aria-pressed="false" aria-label="Talk to Alexa+">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      </button>
+      <input type="text" id="input" placeholder="Ask HomeBase, or tap the mic" aria-label="Message">
+      <button type="submit" class="send" id="send">Send</button>
+    </form>
+  </aside>
+
+  <main class="board">
+    <header class="top">
+      <h1 id="dayTitle">Today</h1>
+      <ul class="people" id="people"></ul>
+      <div class="tools">
+        <button type="button" class="ghost" id="speakToggle" aria-pressed="false">Speak replies</button>
+        <button type="button" class="ghost" id="resetBtn">Reset demo</button>
+      </div>
+    </header>
+    <p class="alert" id="alert" hidden></p>
+    <section class="river" aria-label="Today's schedule, one row per person">
+      <div class="river-grid" id="river"></div>
+      <p class="legend">Dashed bars are rides HomeBase assigned. Hatched areas are overlaps.</p>
+    </section>
+    <div class="lower">
+      <section aria-labelledby="choresH">
+        <h3 id="choresH">Chores</h3>
+        <div id="load"></div>
+        <ul class="chore-list" id="choreList"></ul>
+      </section>
+      <section aria-labelledby="groceryH">
+        <h3 id="groceryH">Grocery list</h3>
+        <ul class="grocery" id="grocery"></ul>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script src="/intents.js"></script>
+<script>
+(() => {
+  "use strict";
+  const PALETTE = ["#f4b26a", "#74c0e8", "#c9a2f5", "#86db9f", "#f28ba8", "#e6d36b"];
+  const RANGE_MIN = 8 * 60, RANGE_MAX = 20 * 60;
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+
+  let state = null;
+  let seenEvents = null;
+  let busy = false;
+  let speakOn = false;
+  try { speakOn = localStorage.getItem("hb-speak") === "1"; } catch (e) {}
+
+  const colorOf = (name) => {
+    const i = state ? state.family.findIndex((m) => m.name === name) : 0;
+    return PALETTE[(i < 0 ? 0 : i) % PALETTE.length];
+  };
+  const mins = (iso) => { const t = new Date(iso); return t.getHours() * 60 + t.getMinutes(); };
+  const fmt = (iso) => {
+    const t = new Date(iso); const h = t.getHours(), m = t.getMinutes();
+    return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+  };
+  const pts = (n) => `${n} pt${n === 1 ? "" : "s"}`;
+  const pct = (m, lo, hi) => ((Math.min(Math.max(m, lo), hi) - lo) / (hi - lo)) * 100;
+
+  /* ---------- API ---------- */
+  async function api(path, opts) {
+    const r = await fetch(path, opts);
+    return r.json();
+  }
+  const getState = () => api("/api/state");
+  const callTool = (name, args) => api("/api/tool", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name, arguments: args || {} }),
+  });
+
+  /* ---------- chat log ---------- */
+  function addMsg(who, text, opts = {}) {
+    const li = el("li", `msg ${who}${opts.warn ? " warn" : ""}${opts.err ? " err" : ""}`);
+    li.appendChild(el("p", "bubble", text));
+    if (opts.via) li.appendChild(el("p", "via", `Called ${opts.via} on the MCP server`));
+    $("log").appendChild(li);
+    $("log").scrollTop = $("log").scrollHeight;
+  }
+  function speak(text) {
+    if (!speakOn || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+  }
+  function botSay(text, opts) { addMsg("bot", text, opts); speak(text); }
+
+  /* ---------- reply wording ---------- */
+  function describe(tool, data, args) {
+    switch (tool) {
+      case "daily_briefing": return { text: data.spoken, warn: data.conflicts && data.conflicts.length > 0 };
+      case "who_can_pickup":
+        return { text: data.length
+          ? `Free to drive then: ${data.map((d) => `${d.name} (${d.pickups_so_far} pickups so far)`).join(", ")}.`
+          : "Nobody who can drive is free in that window." };
+      case "assign_pickup": return { text: `${data.member} takes it, ${fmt(data.start)} to ${fmt(data.end)}. ${data.why}` };
+      case "add_chore": return { text: `I gave "${data.title}" to ${data.assignee}. ${data.why}.` };
+      case "complete_chore": return { text: `Done. "${data.title}" is checked off for ${data.completed_by}.` };
+      case "add_event": {
+        let t = `Added ${data.title} for ${data.member}, ${fmt(data.start)} to ${fmt(data.end)}.`;
+        const c = data.conflicts || [];
+        if (c.length) t += ` Heads up: that overlaps with ${c.map((x) => `${x.title} (${fmt(x.start)} to ${fmt(x.end)})`).join(" and ")}.`;
+        return { text: t, warn: c.length > 0 };
+      }
+      case "grocery_add": return { text: data.note === "added" ? `Added ${data.item} to the grocery list.` : `${data.item} is already on the list.` };
+      case "grocery_list":
+        return { text: data.length ? `On the list: ${data.map((g) => g.item).join(", ")}.` : "The grocery list is empty." };
+      case "grocery_bought": return { text: `Checked off ${data.item}.` };
+      case "chore_status": {
+        const load = data.workload.map((w) => ({ n: w.name, p: w.open_points + w.done_last_14d_points }));
+        load.sort((a, b) => b.p - a.p);
+        const over = data.open.filter((c) => c.overdue).length;
+        let t = `${data.open.length} chore${data.open.length === 1 ? "" : "s"} open${over ? `, ${over} overdue` : ""}.`;
+        if (load.length > 1) t += ` ${load[0].n} has carried the most lately (${load[0].p} points) and ${load[load.length - 1].n} the least (${load[load.length - 1].p}), so new chores go to ${load[load.length - 1].n} first.`;
+        return { text: t };
+      }
+      case "load_demo_family":
+        return { text: data.seeded ? `Loaded a sample family: ${data.family.join(", ")}.` : data.note };
+      default: return { text: typeof data === "string" ? data : JSON.stringify(data) };
+    }
+  }
+
+  /* ---------- rendering ---------- */
+  function renderTop() {
+    const d = new Date(state.date + "T12:00:00");
+    $("dayTitle").textContent = d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+    const ul = $("people"); ul.textContent = "";
+    state.family.forEach((m) => {
+      const li = el("li");
+      const dot = el("span", "dot"); dot.style.setProperty("--c", colorOf(m.name));
+      li.append(dot, document.createTextNode(m.name));
+      ul.appendChild(li);
+    });
+    const a = $("alert");
+    if (state.conflicts.length) {
+      a.hidden = false;
+      a.textContent = state.conflicts.map((c) => `${c.member} is double-booked: ${c.between[0]} overlaps ${c.between[1]}.`).join(" ");
+    } else a.hidden = true;
+  }
+
+  function layoutRows(events) {
+    const rows = [];
+    return events.slice().sort((a, b) => a.start.localeCompare(b.start)).map((e) => {
+      const s = mins(e.start), en = mins(e.end);
+      let r = rows.findIndex((last) => last <= s);
+      if (r < 0) { r = rows.length; rows.push(0); }
+      rows[r] = en;
+      return { e, row: r, s, en };
+    });
+  }
+
+  function renderRiver() {
+    const root = $("river"); root.textContent = "";
+    if (!state.family.length) {
+      const p = el("p", "empty", "No one is set up yet. Say or type \"load the demo family\".");
+      p.style.gridColumn = "1 / -1"; root.appendChild(p); return;
+    }
+    let lo = RANGE_MIN, hi = RANGE_MAX;
+    state.events.forEach((e) => { lo = Math.min(lo, Math.floor(mins(e.start) / 60) * 60); hi = Math.max(hi, Math.ceil(mins(e.end) / 60) * 60); });
+
+    const axis = el("div", "axis"); axis.style.gridColumn = "2";
+    root.appendChild(el("div")); root.appendChild(axis);
+    for (let h = Math.ceil(lo / 60); h * 60 <= hi; h += 2) {
+      const s = el("span", null, `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`);
+      s.style.left = pct(h * 60, lo, hi) + "%"; axis.appendChild(s);
+    }
+
+    state.family.forEach((m) => {
+      const mine = state.events.filter((e) => e.member === m.name);
+      const placed = layoutRows(mine);
+      const rowCount = Math.max(1, ...placed.map((p) => p.row + 1));
+      const height = rowCount * 38 + 8;
+
+      const label = el("div", "lane-label"); label.style.height = height + "px";
+      const dot = el("span", "dot"); dot.style.setProperty("--c", colorOf(m.name));
+      label.append(dot, document.createTextNode(m.name));
+      const lane = el("div", "lane"); lane.style.height = height + "px";
+      lane.style.setProperty("--c", colorOf(m.name));
+
+      placed.forEach((p) => {
+        const left = pct(p.s, lo, hi), width = Math.max(pct(p.en, lo, hi) - left, 1.2);
+        const ev = el("div", `event${p.e.kind === "pickup" ? " pickup" : ""}${seenEvents && !seenEvents.has(p.e.id) ? " fresh" : ""}`);
+        ev.style.left = left + "%"; ev.style.width = width + "%"; ev.style.top = (p.row * 38 + 4) + "px";
+        ev.style.setProperty("--c", colorOf(m.name));
+        ev.title = `${p.e.title}, ${fmt(p.e.start)} to ${fmt(p.e.end)}`;
+        const txt = el("span", "txt");
+        txt.append(el("b", null, p.e.title), el("small", null, fmt(p.e.start)));
+        ev.appendChild(txt);
+        lane.appendChild(ev);
+      });
+
+      // overlap bands for double-booked pairs in this lane
+      for (let i = 0; i < placed.length; i++) for (let j = i + 1; j < placed.length; j++) {
+        const a = placed[i], b = placed[j];
+        const s = Math.max(a.s, b.s), en = Math.min(a.en, b.en);
+        if (s < en) {
+          const c = el("div", "clash");
+          c.style.left = pct(s, lo, hi) + "%"; c.style.width = (pct(en, lo, hi) - pct(s, lo, hi)) + "%";
+          c.title = `${a.e.title} overlaps ${b.e.title}`;
+          lane.appendChild(c);
+        }
+      }
+      root.append(label, lane);
+    });
+
+    // vertical hour lines and the "now" marker
+    const plot = el("div", "plot");
+    for (let h = Math.ceil(lo / 60); h * 60 <= hi; h++) {
+      const g = el("div", "grid-line"); g.style.left = pct(h * 60, lo, hi) + "%"; plot.appendChild(g);
+    }
+    const now = new Date(); const nm = now.getHours() * 60 + now.getMinutes();
+    if (state.date === localISO(now) && nm >= lo && nm <= hi) {
+      const n = el("div", "now-line"); n.style.left = pct(nm, lo, hi) + "%"; plot.appendChild(n);
+    }
+    root.appendChild(plot);
+
+    // events whose label does not fit inside get it beside the bar, on the side with room
+    root.querySelectorAll(".lane").forEach((lane) => {
+      const evs = Array.from(lane.querySelectorAll(".event"));
+      evs.forEach((ev) => {
+        const b = ev.querySelector("b");
+        if (b.scrollWidth > b.clientWidth + 1) ev.classList.add("narrow");
+      });
+      const laneR = lane.getBoundingClientRect();
+      const rects = evs.map((e) => e.getBoundingClientRect());
+      evs.forEach((ev, i) => {
+        if (!ev.classList.contains("narrow")) return;
+        const r = rects[i], txt = ev.querySelector(".txt");
+        const others = rects.filter((o, j) => j !== i && Math.abs(o.top - r.top) < 4);
+        const rightEdge = Math.min(laneR.right, ...others.filter((o) => o.left >= r.right - 1).map((o) => o.left));
+        const leftEdge = Math.max(laneR.left, ...others.filter((o) => o.right <= r.left + 1).map((o) => o.right));
+        const gapR = rightEdge - r.right - 8, gapL = r.left - leftEdge - 8;
+        const need = txt.scrollWidth;
+        const useLeft = gapR < need && gapL > gapR;
+        if (useLeft) ev.classList.add("flip");
+        const gap = Math.max(40, useLeft ? gapL : gapR);
+        txt.style.maxWidth = gap + "px";
+        txt.style.overflow = "hidden";
+      });
+    });
+  }
+  const localISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  function dueWord(iso) {
+    if (iso === state.date) return "due today";
+    const t = new Date(state.date + "T12:00:00"); t.setDate(t.getDate() + 1);
+    if (iso === localISO(t)) return "due tomorrow";
+    return "due " + new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "long" });
+  }
+
+  function renderChores() {
+    const load = $("load"); load.textContent = "";
+    const rows = state.chores.workload;
+    const max = Math.max(1, ...rows.map((w) => w.open_points + w.done_last_14d_points));
+    rows.forEach((w) => {
+      const row = el("div", "load-row");
+      row.style.setProperty("--c", colorOf(w.name));
+      const bar = el("div", "load-bar");
+      const o = el("i", "load-open"); o.style.width = (w.open_points / max * 100) + "%";
+      const d = el("i", "load-done"); d.style.width = (w.done_last_14d_points / max * 100) + "%";
+      bar.append(o, d);
+      row.append(el("span", null, w.name), bar, el("span", "load-num", pts(w.open_points + w.done_last_14d_points)));
+      load.appendChild(row);
+    });
+    if (rows.length) load.appendChild(el("p", "legend", "Bright: open now. Soft: done in the last 14 days. New chores go to the shortest bar."));
+
+    const ul = $("choreList"); ul.textContent = "";
+    if (!state.chores.open.length && rows.length) ul.appendChild(el("li", "empty", "All chores are done."));
+    state.chores.open.forEach((c) => {
+      const li = el("li", "chore");
+      li.appendChild(el("span", null, c.title));
+      const meta = el("span", "meta");
+      const dot = el("span", "dot"); dot.style.setProperty("--c", colorOf(c.assignee));
+      const due = !c.due ? "no due date" : c.overdue ? "overdue" : dueWord(c.due);
+      const dueEl = el("span", c.overdue ? "late" : null, due);
+      meta.append(dot, document.createTextNode(c.assignee + " · "), dueEl);
+      li.appendChild(meta);
+      const b = el("button", "check", "Done"); b.type = "button";
+      b.setAttribute("aria-label", `Mark ${c.title} done`);
+      b.addEventListener("click", () => run(`mark ${c.title} as done`, { silentUser: false }));
+      li.appendChild(b);
+      ul.appendChild(li);
+    });
+  }
+
+  function renderGrocery() {
+    const ul = $("grocery"); ul.textContent = "";
+    if (!state.grocery.length) { ul.appendChild(el("li", "empty", "Nothing on the list. Try \"add eggs to the grocery list\".")); return; }
+    state.grocery.forEach((g) => {
+      const li = el("li");
+      li.append(el("span", null, g.item), el("span", "qty", g.qty + (g.added_by ? ` · ${g.added_by}` : "")));
+      const b = el("button", "check", "Got it"); b.type = "button";
+      b.setAttribute("aria-label", `Check off ${g.item}`);
+      b.addEventListener("click", () => run(`check off ${g.item}`));
+      li.appendChild(b);
+      ul.appendChild(li);
+    });
+  }
+
+  function renderAll() { renderTop(); renderRiver(); renderChores(); renderGrocery(); seenEvents = new Set(state.events.map((e) => e.id)); }
+  async function refresh() { state = await getState(); renderAll(); }
+
+  /* ---------- running a command ---------- */
+  const HELP = "I can read the day's plan, assign pickups, hand out chores fairly, add events and keep the grocery list. Try one of the suggestions below.";
+
+  async function run(text) {
+    if (busy || !text.trim()) return;
+    busy = true; $("send").disabled = true;
+    try {
+      addMsg("user", text);
+      const intent = window.HomeBaseIntents.parseIntent(text, { family: state.family.map((m) => m.name), today: state.date });
+      if (intent.special === "reset") { await doReset(); return; }
+      if (intent.error) { botSay(intent.error, { err: true }); return; }
+      if (intent.help) { botSay(HELP); return; }
+      const res = await callTool(intent.tool, intent.args);
+      if (!res.ok) { botSay(res.error, { err: true }); return; }
+      const out = describe(intent.tool, res.data, intent.args);
+      state = await getState();
+      botSay(out.text, { warn: out.warn, via: intent.tool });
+      renderAll();
+    } catch (e) {
+      botSay("I couldn't reach the HomeBase server. Check that it is still running in its window.", { err: true });
+    } finally { busy = false; $("send").disabled = false; }
+  }
+
+  async function doReset() {
+    const res = await api("/api/reset", { method: "POST" });
+    seenEvents = null;
+    await refresh();
+    botSay(res.ok ? "Reset. The sample family is back with a fresh day." : "Reset failed.");
+  }
+
+  /* ---------- suggestions ---------- */
+  const SUGGESTIONS = [
+    "What's the plan today?",
+    "Who can pick up at 5:30?",
+    "Assign the 5:30 pickup for Kabir from football",
+    "Add a chore: vacuum the stairs",
+    "Schedule school meeting for Arjun at 4 pm",
+    "Add eggs to the grocery list",
+    "Who has the most chores?",
+  ];
+  function renderChips() {
+    const c = $("chips"); c.textContent = "";
+    SUGGESTIONS.forEach((s) => {
+      const b = el("button", "chip", s); b.type = "button";
+      b.addEventListener("click", () => run(s));
+      c.appendChild(b);
+    });
+  }
+
+  /* ---------- voice ---------- */
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let rec = null, listening = false;
+  function setListening(on) {
+    listening = on; $("mic").setAttribute("aria-pressed", String(on));
+    $("input").placeholder = on ? "Listening..." : "Ask HomeBase, or tap the mic";
+  }
+  function initVoice() {
+    const mic = $("mic");
+    if (!SR) { mic.disabled = true; mic.title = "Voice input works in Chrome or Edge. You can type instead."; return; }
+    rec = new SR(); rec.lang = navigator.language || "en-US"; rec.interimResults = true; rec.continuous = false;
+    rec.onresult = (e) => {
+      let t = "", final = false;
+      for (let i = e.resultIndex; i < e.results.length; i++) { t += e.results[i][0].transcript; if (e.results[i].isFinal) final = true; }
+      $("input").value = t;
+      if (final) { $("input").value = ""; run(t); }
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = (e) => {
+      setListening(false);
+      if (e.error === "not-allowed" || e.error === "service-not-allowed")
+        botSay("The microphone is blocked. Allow it from the address bar, or type instead.", { err: true });
+      else if (e.error === "no-speech") botSay("I didn't hear anything. Tap the mic and try again.", { err: true });
+    };
+    mic.addEventListener("click", () => {
+      if (listening) { rec.stop(); return; }
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      try { rec.start(); setListening(true); } catch (e) {}
+    });
+  }
+
+  /* ---------- boot ---------- */
+  function syncSpeakButton() { $("speakToggle").setAttribute("aria-pressed", String(speakOn)); }
+  $("speakToggle").addEventListener("click", () => {
+    speakOn = !speakOn; syncSpeakButton();
+    try { localStorage.setItem("hb-speak", speakOn ? "1" : "0"); } catch (e) {}
+    if (!speakOn && window.speechSynthesis) window.speechSynthesis.cancel();
+  });
+  $("resetBtn").addEventListener("click", () => doReset());
+  $("form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const v = $("input").value; $("input").value = ""; run(v);
+  });
+
+  (async function boot() {
+    syncSpeakButton(); renderChips(); initVoice();
+    try {
+      await refresh();
+      if (!state.family.length) {
+        botSay("Hi, I'm HomeBase. No family is set up yet. Say \"load the demo family\" to see me work.");
+        const b = el("button", "chip", "Load the demo family"); b.type = "button";
+        b.addEventListener("click", () => run("load the demo family")); $("chips").prepend(b);
+      } else {
+        addMsg("bot", state.spoken, { warn: state.conflicts.length > 0 });
+      }
+    } catch (e) {
+      addMsg("bot", "I couldn't reach the HomeBase server. Start it with: python -m homebase.server", { err: true });
+    }
+  })();
+})();
+</script>
+</body>
+</html>
