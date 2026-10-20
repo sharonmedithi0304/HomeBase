@@ -404,11 +404,29 @@
       li.append(dot, document.createTextNode(m.name));
       ul.appendChild(li);
     });
-    const a = $("alert");
+        const a = $("alert");
     if (state.conflicts.length) {
       a.hidden = false;
-      a.textContent = state.conflicts.map((c) => `${c.member} is double-booked: ${c.between[0]} overlaps ${c.between[1]}.`).join(" ");
-    } else a.hidden = true;
+      a.textContent = state.conflicts.map((c) => {
+        const first = state.events.find(
+          (e) => e.member === c.member && e.title === c.between[0]
+        );
+        const second = state.events.find(
+          (e) => e.member === c.member && e.title === c.between[1]
+        );
+
+        if (!first || !second) {
+          return `${c.member} is double-booked: ${c.between[0]} overlaps ${c.between[1]}. Review the schedule to resolve this conflict.`;
+        }
+
+        const start = first.start > second.start ? first.start : second.start;
+        const end = first.end < second.end ? first.end : second.end;
+
+        return `${c.member} is double-booked from ${fmt(start)} to ${fmt(end)}: ${first.title} overlaps ${second.title}. Consider moving one event or arranging an alternative.`;
+      }).join(" ");
+    } else {
+      a.hidden = true;
+    }
   }
 
   function layoutRows(events) {
